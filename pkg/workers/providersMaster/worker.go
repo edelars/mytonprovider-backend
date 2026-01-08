@@ -654,7 +654,7 @@ func checkProviderFiles(ctx context.Context, gw *adnl.Gateway, ip db.ProviderIP,
 
 	stats := make(map[constants.ReasonCode]int)
 	// to skip dead providers and save time
-	maxFailureThreshold := uint32(len(storageContracts) / 100 * 20)
+	maxFailureThreshold := uint32(float32(len(storageContracts)) / 100.0 * 20.0)
 	var failsInARow uint32
 
 	addr := ip.Storage.IP + ":" + strconv.Itoa(int(ip.Storage.Port))
