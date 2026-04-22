@@ -9,11 +9,12 @@ go build -buildvcs=false -o mtpo-backend ./cmd
 
 cat <<EOL > config.env
 SYSTEM_PORT=9090
+SYSTEM_ADNL_PORT=16167
 MASTER_ADDRESS=UQB3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d0x0
 TON_CONFIG_URL=https://ton-blockchain.github.io/global.config.json
 SYSTEM_ACCESS_TOKENS=
 BATCH_SIZE=100
-DB_HOST=${HOST:-localhost}
+DB_HOST=127.0.0.1
 DB_PORT=5432
 DB_USER=${PG_USER}
 DB_PASSWORD=${PG_PASSWORD}

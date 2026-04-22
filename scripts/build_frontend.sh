@@ -11,7 +11,6 @@ cd /tmp/frontend
 if [ -d "$REPO_DIR" ]; then
     echo "Repository directory '$REPO_DIR' found. Pulling latest changes."
     cd "$REPO_DIR"
-    git reset --hard
     git pull
 else
     echo "Cloning repository from $REPO_URL."
@@ -19,21 +18,17 @@ else
     cd "$REPO_DIR"
 fi
 
-# Hard replace backend host in lib/api.ts
-if [ "$INSTALL_SSL" = "true" ]; then
-    PROTOCOL="https"
-else
-    PROTOCOL="http"
-fi
-
-echo "Replacing backend host in lib/api.ts with $PROTOCOL://$HOST"
-sed -i "s|https://mytonprovider.org|$PROTOCOL://$HOST|g" lib/api.ts
-
 
 echo "Installing npm dependencies..."
 npm install --legacy-peer-deps
 
 echo "Building the project..."
+if [ -n "$FRONTEND_API_BASE_URL" ]; then
+    export NEXT_PUBLIC_API_BASE_URL="$FRONTEND_API_BASE_URL"
+    echo "Using NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL"
+else
+    echo "Using same-origin API URLs during build"
+fi
 npm run build
 
 DOMAIN="${DOMAIN:-mytonprovider.org}"

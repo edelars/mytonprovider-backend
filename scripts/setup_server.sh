@@ -249,7 +249,7 @@ main() {
     echo "View logs: tail -f /var/log/mytonprovider.app/mytonprovider.app.log"
     echo ""
     echo "Database connection details:"
-    echo "Host: $HOST"
+    echo "Host: 127.0.0.1"
     echo "Port: 5432"
     echo "Database: $PG_DB"
     echo "User: $PG_USER"

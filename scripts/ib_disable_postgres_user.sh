@@ -1,8 +1,9 @@
 #!/bin/bash
 
 PGUSER_TO_BLOCK="postgres"
+PG_VERSION="${PG_VERSION:-15}"
 
-PG_HBA_PATH="/etc/postgresql/15/main/pg_hba.conf"
+PG_HBA_PATH="/etc/postgresql/${PG_VERSION}/main/pg_hba.conf"
 
 cp "$PG_HBA_PATH" "${PG_HBA_PATH}.bak.$(date +%s)"
 
@@ -13,6 +14,7 @@ else
         BEGIN { inserted = 0 }
         /^host/ && inserted == 0 {
             print "host    all    " user "    0.0.0.0/0    reject"
+            print "host    all    " user "    ::/0         reject"
             inserted = 1
         }
         { print }

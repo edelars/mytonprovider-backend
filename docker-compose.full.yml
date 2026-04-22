@@ -1,0 +1,20 @@
+services:
+  frontend:
+    image: node:20
+    working_dir: /app
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://backend:9090
+      CHOKIDAR_USEPOLLING: "1"
+      npm_config_legacy_peer_deps: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../mytonprovider-org:/app
+      - frontend-node-modules:/app/node_modules
+    command: bash -lc "npm ci --legacy-peer-deps && npm run dev -- --hostname 0.0.0.0"
+
+volumes:
+  frontend-node-modules:

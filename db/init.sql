@@ -1,11 +1,11 @@
 
 -- SCHEMAS
 
-CREATE SCHEMA providers AUTHORIZATION pguser;
+CREATE SCHEMA IF NOT EXISTS providers AUTHORIZATION __PG_USER__;
 
-CREATE SCHEMA public AUTHORIZATION pg_database_owner;
+CREATE SCHEMA IF NOT EXISTS public AUTHORIZATION pg_database_owner;
 
-CREATE SCHEMA system AUTHORIZATION pguser;
+CREATE SCHEMA IF NOT EXISTS system AUTHORIZATION __PG_USER__;
 
 -- TABLES
 
@@ -28,7 +28,8 @@ INSERT INTO system.reason_codes (code, description) VALUES
     (302, 'Invalid Header'),
     (401, 'Cant Get Piece'),
     (402, 'Cant Parse BoC'),
-    (403, 'Proof Check Failed');
+    (403, 'Proof Check Failed')
+ON CONFLICT (code) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS providers.benchmarks
 (
@@ -499,34 +500,42 @@ BEGIN
 END;
 $BODY$;
 
+DROP TRIGGER IF EXISTS benchmarks_archive_after_update ON providers.benchmarks;
 CREATE TRIGGER benchmarks_archive_after_update 
 AFTER UPDATE ON providers.benchmarks 
 FOR EACH ROW EXECUTE FUNCTION providers.archive_benchmarks_after_update();
 
+DROP TRIGGER IF EXISTS trg_log_provider_update ON providers.providers;
 CREATE TRIGGER trg_log_provider_update 
 BEFORE UPDATE ON providers.providers 
 FOR EACH ROW EXECUTE FUNCTION providers.log_provider_update();
 
+DROP TRIGGER IF EXISTS trg_log_status_insert ON providers.statuses;
 CREATE TRIGGER trg_log_status_insert 
 AFTER INSERT ON providers.statuses 
 FOR EACH ROW EXECUTE FUNCTION providers.log_status_history();
 
+DROP TRIGGER IF EXISTS trg_log_status_update ON providers.statuses;
 CREATE TRIGGER trg_log_status_update 
 AFTER UPDATE ON providers.statuses 
 FOR EACH ROW EXECUTE FUNCTION providers.log_status_history();
 
+DROP TRIGGER IF EXISTS trg_save_last_online ON providers.statuses;
 CREATE TRIGGER trg_save_last_online
 AFTER INSERT OR UPDATE ON providers.statuses
 FOR EACH ROW EXECUTE FUNCTION providers.save_last_online();
 
+DROP TRIGGER IF EXISTS storage_contracts_delete_trigger ON providers.storage_contracts;
 CREATE TRIGGER storage_contracts_delete_trigger 
 BEFORE DELETE ON providers.storage_contracts 
 FOR EACH ROW EXECUTE FUNCTION providers.move_to_storage_contracts_history();
 
+DROP TRIGGER IF EXISTS telemetry_archive_before_delete ON providers.telemetry;
 CREATE TRIGGER telemetry_archive_before_delete 
 BEFORE DELETE ON providers.telemetry 
 FOR EACH ROW EXECUTE FUNCTION providers.archive_telemetry();
 
+DROP TRIGGER IF EXISTS telemetry_archive_before_update ON providers.telemetry;
 CREATE TRIGGER telemetry_archive_before_update 
 BEFORE UPDATE ON providers.telemetry 
 FOR EACH ROW EXECUTE FUNCTION providers.archive_telemetry();

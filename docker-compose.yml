@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: mytonprovider-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pguser
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: providerdb
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pguser -d providerdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  db-init:
+    image: postgres:15
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_USER: pguser
+      PG_PASSWORD: secret
+      PG_DB: providerdb
+    volumes:
+      - .:/app
+    command: bash ./scripts/init_db.sh
+
+  backend:
+    image: golang:1.24-bookworm
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SYSTEM_PORT: 9090
+      SYSTEM_ADNL_PORT: 16167
+      SYSTEM_ACCESS_TOKENS: ""
+      SYSTEM_LOG_LEVEL: 0
+      SYSTEM_STORE_HISTORY_DAYS: 90
+      MASTER_ADDRESS: UQB3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d0x0
+      TON_CONFIG_URL: https://ton-blockchain.github.io/global.config.json
+      BATCH_SIZE: 100
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: pguser
+      DB_PASSWORD: secret
+      DB_NAME: providerdb
+    ports:
+      - "9090:9090"
+      - "16167:16167"
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    command: bash -lc "/usr/local/go/bin/go version && /usr/local/go/bin/go run -tags=debug ./cmd"
+
+volumes:
+  postgres-data:
+  go-mod-cache:
+  go-build-cache:

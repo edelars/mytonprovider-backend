@@ -14,63 +14,109 @@ This backend service:
 - Computes provider ratings
 - Collect own metrics via **Prometheus**
 
-## Installation & Setup
+## Production Server Setup
 
-To get started, you'll need a clean Debian 12 server with root user access.
+The automated install scripts target a clean Debian 12 server with root access.
 
-1. **Download the server connection script**
-
-Instead of password login, the security script requires using key-based authentication. This script should be run on your local machine, it doesn't require sudo, and will only forward keys for access.
+1. Download the SSH bootstrap script on your local machine:
 
 ```bash
 wget https://raw.githubusercontent.com/dearjohndoe/mytonprovider-backend/refs/heads/master/scripts/init_server_connection.sh
 ```
 
-2. **Forward keys and disable password access**
+2. Copy your SSH key and disable password access:
 
 ```bash
 USERNAME=root PASSWORD=supersecretpassword HOST=123.45.67.89 bash init_server_connection.sh
 ```
 
-In case of a man-in-the-middle error, you might need to remove known_hosts.
-
-3. **Log into the remote machine and download the installation script**
+3. Log into the server and fetch the installer:
 
 ```bash
-ssh root@123.45.67.89 # If it asks for a password, the previous step failed.
-
+ssh root@123.45.67.89
 wget https://raw.githubusercontent.com/dearjohndoe/mytonprovider-backend/refs/heads/master/scripts/setup_server.sh
 ```
 
-4. **Run server setup and installation**
-
-This will take a few minutes.
+4. Run the full setup:
 
 ```bash
-PG_USER=pguser PG_PASSWORD=secret PG_DB=providerdb NEWFRONTENDUSER=jdfront NEWSUDOUSER=johndoe NEWUSER_PASSWORD=newsecurepassword bash ./setup_server.sh
+PG_USER=appuser PG_PASSWORD=secret PG_DB=providerdb NEWFRONTENDUSER=jdfront NEWSUDOUSER=johndoe NEWUSER_PASSWORD=newsecurepassword bash ./setup_server.sh
 ```
 
-Upon completion, it will output useful information about server usage.
+Notes:
+- `PG_USER` is no longer required to be `pguser`; the DB init script templates schema ownership from the env var.
+- PostgreSQL is configured for local access by default; the backend connects to `127.0.0.1:5432`.
+- `build_frontend.sh` no longer patches frontend source code. If you need an absolute API URL during frontend build, pass `FRONTEND_API_BASE_URL=...`.
 
-## Dev:
-### VS Code Configuration
-Create `.vscode/launch.json`:
-```json
-{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Launch Package",
-            "type": "go",
-            "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/cmd",
-            "buildFlags": "-tags=debug",    // to handle OPTIONS queries without nginx when dev
-            "env": {...}
-        }
-    ]
-}
+## Local Development
+
+### Prerequisites
+
+- Docker and Docker Compose plugin
+
+### 1. Start PostgreSQL
+
+```bash
+docker compose up -d postgres
 ```
+
+### 2. Initialize the database schema
+
+```bash
+docker compose run --rm db-init
+```
+
+### 3. Run the backend in Docker
+
+```bash
+docker compose up backend
+```
+
+If you changed the compose file or hit a stale backend container, recreate the service:
+
+```bash
+docker compose rm -sf backend
+docker compose up --force-recreate backend
+```
+
+Useful local endpoints:
+- `http://localhost:9090/health`
+- `http://localhost:9090/api/v1/providers/filters`
+- `http://localhost:9090/metrics`
+
+### Full local stack with frontend
+
+To run PostgreSQL, backend, and frontend together:
+
+```bash
+docker compose up -d postgres
+docker compose run --rm db-init
+docker compose -f docker-compose.yml -f docker-compose.full.yml up backend frontend
+```
+
+The frontend will be available at `http://localhost:3000` and uses `http://backend:9090` inside Docker.
+
+If the frontend container previously failed during dependency installation, recreate its volumes before retrying:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.full.yml down -v
+```
+
+### Host-run alternative
+
+If you want to run Go directly on the host instead of in Docker:
+
+```bash
+cp .env.example .env
+bash scripts/init_local_db.sh
+bash scripts/dev_backend.sh
+```
+
+This path uses the local PostgreSQL port published by Docker and runs `go run -tags=debug ./cmd` so the app handles CORS and `OPTIONS` requests without nginx.
+
+### VS Code
+
+If you prefer VS Code, use the same env values from `.env` and keep `buildFlags: "-tags=debug"`.
 
 ## Project Structure
 

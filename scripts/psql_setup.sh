@@ -20,10 +20,12 @@ if ! command -v psql &> /dev/null; then
 fi
 
 # configure psql
+# Keep PostgreSQL local-only by default. The backend connects via 127.0.0.1.
 sed -i 's/^host\s\+all\s\+all\s\+127\.0\.0\.1\/32\s\+.*/host all all 127.0.0.1\/32 md5/' "$PG_HBA"
-sed -i "s/^#listen_addresses =.*/listen_addresses = '*'/" "$PG_CONF"
-sed -i "s/^listen_addresses = 'localhost'/listen_addresses = '*'/" "$PG_CONF"
-grep -q "0.0.0.0/0" "$PG_HBA" || echo "host    all             all             0.0.0.0/0               md5" >> "$PG_HBA"
+grep -Eq '^host[[:space:]]+all[[:space:]]+all[[:space:]]+127\.0\.0\.1/32[[:space:]]+md5$' "$PG_HBA" || echo "host all all 127.0.0.1/32 md5" >> "$PG_HBA"
+grep -Eq '^host[[:space:]]+all[[:space:]]+all[[:space:]]+::1/128[[:space:]]+md5$' "$PG_HBA" || echo "host all all ::1/128 md5" >> "$PG_HBA"
+sed -i "s/^#listen_addresses =.*/listen_addresses = 'localhost'/" "$PG_CONF"
+sed -i "s/^listen_addresses =.*/listen_addresses = 'localhost'/" "$PG_CONF"
 systemctl restart postgresql
 
 # create user
