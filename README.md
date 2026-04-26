@@ -148,6 +148,25 @@ The application runs several background workers:
 - **Telemetry Worker**: Processes incoming telemetry data
 - **Cleaner Worker**: Maintains database hygiene and cleanup
 
+## Agent Mode
+
+The backend can run as a storage proof checking agent. In this mode the process does not connect to Postgres and does not expose the public API. It polls the coordinator over HTTP, checks assigned storage contracts through ADNL/DHT, and sends results back.
+
+On the coordinator, keep the normal backend running and set `SYSTEM_ACCESS_TOKENS` to the md5 hash of the raw agent token. The agent sends the raw token as `Authorization: Bearer ...`.
+
+Example agent env:
+
+```bash
+APP_ROLE=agent
+AGENT_ID=vps-1
+AGENT_COORDINATOR_URL=https://mytonprovider.org
+AGENT_ACCESS_TOKEN=raw-agent-token
+AGENT_BATCH_SIZE=100
+AGENT_POLL_INTERVAL_SECONDS=30
+SYSTEM_ADNL_PORT=16167
+TON_CONFIG_URL=https://ton-blockchain.github.io/global.config.json
+```
+
 ## License
  
 Apache-2.0

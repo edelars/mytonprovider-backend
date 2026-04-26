@@ -13,12 +13,15 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/prometheus/client_golang/prometheus"
 
+	agentworker "mytonprovider-backend/pkg/agents"
+	"mytonprovider-backend/pkg/agents/checker"
 	simpleCache "mytonprovider-backend/pkg/cache"
 	"mytonprovider-backend/pkg/clients/ifconfig"
 	tonclient "mytonprovider-backend/pkg/clients/ton"
 	"mytonprovider-backend/pkg/httpServer"
 	providersRepository "mytonprovider-backend/pkg/repositories/providers"
 	systemRepository "mytonprovider-backend/pkg/repositories/system"
+	agentsService "mytonprovider-backend/pkg/services/agents"
 	"mytonprovider-backend/pkg/services/providers"
 	"mytonprovider-backend/pkg/workers"
 	"mytonprovider-backend/pkg/workers/cleaner"
@@ -48,6 +51,11 @@ func run() (err error) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: logLevel,
 	}))
+
+	if config.System.Role == "agent" {
+		return runAgent(config, logger)
+	}
+
 	telemetryCache := simpleCache.NewSimpleCache(2 * time.Minute)
 	benchmarksCache := simpleCache.NewSimpleCache(2 * time.Minute)
 
@@ -172,6 +180,7 @@ func run() (err error) {
 	// Services
 	providersService := providers.NewService(providersRepo, logger)
 	providersService = providers.NewCacheMiddleware(providersService, telemetryCache, benchmarksCache)
+	agentsService := agentsService.NewService(providersRepo, logger)
 
 	// HTTP Server
 	accessTokens := strings.Split(config.System.AccessTokens, ",")
@@ -179,6 +188,7 @@ func run() (err error) {
 	server := httpServer.New(
 		app,
 		providersService,
+		agentsService,
 		accessTokens,
 		config.Metrics.Namespace,
 		config.Metrics.ServerSubsystem,
@@ -206,4 +216,37 @@ func run() (err error) {
 	}
 
 	return err
+}
+
+func runAgent(config *Config, logger *slog.Logger) (err error) {
+	dhtClient, providerClient, err := newProviderClient(context.Background(), config.TON.ConfigURL, config.System.ADNLPort, config.System.Key)
+	if err != nil {
+		logger.Error("failed to create provider client", slog.String("error", err.Error()))
+		return
+	}
+
+	checker := checker.New(config.System.Key, providerClient, dhtClient, logger)
+	worker := agentworker.NewWorker(
+		config.Agent.ID,
+		config.Agent.CoordinatorURL,
+		config.Agent.AccessToken,
+		config.Agent.BatchSize,
+		time.Duration(config.Agent.PollInterval)*time.Second,
+		checker,
+		logger,
+	)
+
+	cancelCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-signalChan
+		logger.Info("shutdown signal received")
+		cancel()
+	}()
+
+	logger.Info("starting agent", "agent_id", config.Agent.ID, "coordinator_url", config.Agent.CoordinatorURL)
+	return worker.Start(cancelCtx)
 }

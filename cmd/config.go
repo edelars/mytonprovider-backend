@@ -16,12 +16,21 @@ var logLevels = map[uint8]slog.Level{
 }
 
 type System struct {
+	Role             string             `env:"APP_ROLE" envDefault:"all"`
 	Port             string             `env:"SYSTEM_PORT" envDefault:"9090"`
 	ADNLPort         string             `env:"SYSTEM_ADNL_PORT" envDefault:"16167"`
 	AccessTokens     string             `env:"SYSTEM_ACCESS_TOKENS" envDefault:""`
 	Key              ed25519.PrivateKey `env:"SYSTEM_KEY" required:"false"`
 	LogLevel         uint8              `env:"SYSTEM_LOG_LEVEL" envDefault:"1"` // 0 - debug, 1 - info, 2 - warn, 3 - error
 	StoreHistoryDays int                `env:"SYSTEM_STORE_HISTORY_DAYS" envDefault:"90"`
+}
+
+type Agent struct {
+	ID             string `env:"AGENT_ID" envDefault:"agent-1"`
+	CoordinatorURL string `env:"AGENT_COORDINATOR_URL" envDefault:""`
+	AccessToken    string `env:"AGENT_ACCESS_TOKEN" envDefault:""`
+	BatchSize      int    `env:"AGENT_BATCH_SIZE" envDefault:"100"`
+	PollInterval   int    `env:"AGENT_POLL_INTERVAL_SECONDS" envDefault:"30"`
 }
 
 type Metrics struct {
@@ -50,6 +59,7 @@ type Config struct {
 	Metrics Metrics
 	TON     TON
 	DB      Postgress
+	Agent   Agent
 }
 
 func loadConfig() *Config {
@@ -65,6 +75,9 @@ func loadConfig() *Config {
 	}
 	if err := env.Parse(&cfg.TON); err != nil {
 		log.Fatalf("Failed to parse TON config: %v", err)
+	}
+	if err := env.Parse(&cfg.Agent); err != nil {
+		log.Fatalf("Failed to parse agent config: %v", err)
 	}
 
 	if cfg.System.Key == nil {

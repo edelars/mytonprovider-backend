@@ -178,3 +178,43 @@ func (h *handler) metrics(c *fiber.Ctx) error {
 
 	return adaptor.HTTPHandler(m)(c)
 }
+
+func (h *handler) pollAgentTasks(c *fiber.Ctx) (err error) {
+	if h.agents == nil {
+		return errorHandler(c, fiber.NewError(fiber.StatusNotFound, "agents service is disabled"))
+	}
+
+	var req v1.AgentPollRequest
+	err = json.Unmarshal(c.Body(), &req)
+	if err != nil {
+		err = fiber.NewError(fiber.StatusBadRequest, "invalid request body")
+		return errorHandler(c, err)
+	}
+
+	resp, err := h.agents.PollTasks(c.Context(), req)
+	if err != nil {
+		return errorHandler(c, err)
+	}
+
+	return c.JSON(resp)
+}
+
+func (h *handler) submitAgentTaskResult(c *fiber.Ctx) (err error) {
+	if h.agents == nil {
+		return errorHandler(c, fiber.NewError(fiber.StatusNotFound, "agents service is disabled"))
+	}
+
+	var req v1.AgentTaskResultRequest
+	err = json.Unmarshal(c.Body(), &req)
+	if err != nil {
+		err = fiber.NewError(fiber.StatusBadRequest, "invalid request body")
+		return errorHandler(c, err)
+	}
+
+	err = h.agents.SubmitResult(c.Context(), req)
+	if err != nil {
+		return errorHandler(c, err)
+	}
+
+	return c.JSON(okHandler(c))
+}

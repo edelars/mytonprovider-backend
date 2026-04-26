@@ -18,6 +18,11 @@ type providers interface {
 	GetStorageContractsChecks(ctx context.Context, req v1.ContractsStatusesRequest) ([]v1.ContractCheck, error)
 }
 
+type agents interface {
+	PollTasks(ctx context.Context, req v1.AgentPollRequest) (v1.AgentPollResponse, error)
+	SubmitResult(ctx context.Context, req v1.AgentTaskResultRequest) error
+}
+
 type errorResponse struct {
 	Error string `json:"error"`
 }
@@ -26,6 +31,7 @@ type handler struct {
 	server       *fiber.App
 	logger       *slog.Logger
 	providers    providers
+	agents       agents
 	namespace    string
 	subsystem    string
 	accessTokens map[string]struct{}
@@ -34,6 +40,7 @@ type handler struct {
 func New(
 	server *fiber.App,
 	providers providers,
+	agents agents,
 	accessTokens []string,
 	namespace string,
 	subsystem string,
@@ -47,6 +54,7 @@ func New(
 	h := &handler{
 		server:       server,
 		providers:    providers,
+		agents:       agents,
 		namespace:    namespace,
 		subsystem:    subsystem,
 		accessTokens: accessTokensMap,

@@ -47,5 +47,11 @@ func (h *handler) RegisterRoutes() {
 		}
 
 		apiv1.Post("/benchmarks", h.updateBenchmarks)
+
+		{
+			agents := apiv1.Group("/agents", h.authorizationMiddleware)
+			agents.Post("/tasks/poll", h.pollAgentTasks)
+			agents.Post("/tasks/result", h.submitAgentTaskResult)
+		}
 	}
 }

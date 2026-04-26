@@ -144,6 +144,27 @@ bash scripts/dev_backend.sh
 - **Telemetry Worker**: Обрабатывает входящюю телеметрию
 - **Cleaner Worker**: Чистит базу данных от устаревшей информации
 
+## Режим агента
+
+Backend поддерживает отдельный запуск агента проверки storage proofs. В этом режиме процесс не подключается к Postgres и не поднимает публичный API, а получает задачи от координатора по HTTP.
+
+На координаторе оставьте обычный запуск и задайте `SYSTEM_ACCESS_TOKENS` как md5-хеш токена агента. Агент отправляет исходный токен в `Authorization: Bearer ...`.
+
+Пример env для агента:
+
+```bash
+APP_ROLE=agent
+AGENT_ID=vps-1
+AGENT_COORDINATOR_URL=https://mytonprovider.org
+AGENT_ACCESS_TOKEN=raw-agent-token
+AGENT_BATCH_SIZE=100
+AGENT_POLL_INTERVAL_SECONDS=30
+SYSTEM_ADNL_PORT=16167
+TON_CONFIG_URL=https://ton-blockchain.github.io/global.config.json
+```
+
+Текущий агент выполняет `storage_proof_check`: получает контракты от координатора, находит ADNL/IP данные провайдеров, проверяет proofs и отправляет назад найденные IP и статусы контрактов.
+
 ## Лицензия
 
 Apache-2.0

@@ -1,5 +1,7 @@
 package v1
 
+import "mytonprovider-backend/pkg/models/db"
+
 type SearchProvidersRequest struct {
 	Filters Filters `json:"filters,omitempty"`
 	Sort    Sort    `json:"sort,omitempty"`
@@ -293,4 +295,30 @@ type ContractCheck struct {
 
 type ContractsStatusesResponse struct {
 	Contracts []ContractCheck `json:"contracts"`
+}
+
+const AgentTaskKindStorageProofCheck = "storage_proof_check"
+
+type AgentPollRequest struct {
+	AgentID string `json:"agent_id"`
+	Limit   int    `json:"limit,omitempty"`
+}
+
+type AgentTask struct {
+	ID        string                          `json:"id"`
+	Kind      string                          `json:"kind"`
+	Contracts []db.ContractToProviderRelation `json:"contracts"`
+}
+
+type AgentPollResponse struct {
+	Tasks []AgentTask `json:"tasks"`
+}
+
+type AgentTaskResultRequest struct {
+	AgentID              string                   `json:"agent_id"`
+	TaskID               string                   `json:"task_id"`
+	Kind                 string                   `json:"kind"`
+	Error                string                   `json:"error,omitempty"`
+	ProviderIPs          []db.ProviderIP          `json:"provider_ips,omitempty"`
+	ContractProofsChecks []db.ContractProofsCheck `json:"contract_proofs_checks,omitempty"`
 }
