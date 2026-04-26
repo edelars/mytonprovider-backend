@@ -2,12 +2,11 @@
 
 # Installs mytonprovider-backend as a storage proof checking agent on Debian.
 # The agent does not install PostgreSQL and talks to the coordinator over HTTP.
+# Run this script from an already cloned mytonprovider-backend repository.
 
 set -euo pipefail
 
 GO_VERSION="1.24.5"
-DEFAULT_REPO_URL="https://github.com/dearjohndoe/mytonprovider-backend.git"
-DEFAULT_REPO_BRANCH="master"
 DEFAULT_INSTALL_DIR="/opt/mytonprovider-agent"
 DEFAULT_SERVICE_USER="mytonprovider-agent"
 DEFAULT_AGENT_ID="$(hostname -s 2>/dev/null || echo agent-1)"
@@ -18,6 +17,8 @@ DEFAULT_BATCH_SIZE="100"
 DEFAULT_POLL_INTERVAL="30"
 DEFAULT_LOG_LEVEL="0"
 GO_BIN=""
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -144,6 +145,14 @@ check_debian() {
     fi
 }
 
+check_source_tree() {
+    if [[ ! -f "$REPO_DIR/go.mod" || ! -d "$REPO_DIR/cmd" ]]; then
+        print_error "Cannot find backend source tree at $REPO_DIR."
+        print_error "Run this script from a cloned mytonprovider-backend repository."
+        exit 1
+    fi
+}
+
 collect_answers() {
     echo ""
     print_status "Agent configuration"
@@ -151,8 +160,6 @@ collect_answers() {
     echo "This script asks for the raw token; the agent sends it as Authorization: Bearer <token>."
     echo ""
 
-    ask REPO_URL "Git repository URL" "$DEFAULT_REPO_URL"
-    ask REPO_BRANCH "Git branch/tag to build" "$DEFAULT_REPO_BRANCH"
     ask INSTALL_DIR "Install directory" "$DEFAULT_INSTALL_DIR"
     ask SERVICE_USER "Linux service user" "$DEFAULT_SERVICE_USER"
     ask SERVICE_NAME "Systemd service name" "mytonprovider-agent"
@@ -171,8 +178,7 @@ collect_answers() {
 print_summary() {
     echo ""
     print_status "Installation summary"
-    echo "Repository: $REPO_URL"
-    echo "Branch/tag: $REPO_BRANCH"
+    echo "Source dir: $REPO_DIR"
     echo "Install dir: $INSTALL_DIR"
     echo "Service user: $SERVICE_USER"
     echo "Service name: $SERVICE_NAME"
@@ -192,7 +198,7 @@ print_summary() {
 install_dependencies() {
     print_status "Installing system dependencies..."
     apt-get update
-    apt-get install -y ca-certificates curl wget git tar build-essential
+    apt-get install -y ca-certificates curl wget tar build-essential
 }
 
 install_go() {
@@ -251,11 +257,8 @@ build_backend() {
     local build_dir
     build_dir="$(mktemp -d)"
 
-    print_status "Cloning repository..."
-    git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "$build_dir/mytonprovider-backend"
-
     print_status "Building backend binary..."
-    "$GO_BIN" build -buildvcs=false -o "$build_dir/mtpo-backend" "$build_dir/mytonprovider-backend/cmd"
+    "$GO_BIN" build -buildvcs=false -o "$build_dir/mtpo-backend" "$REPO_DIR/cmd"
 
     install -m 0755 "$build_dir/mtpo-backend" "$INSTALL_DIR/mtpo-backend"
     rm -rf "$build_dir"
@@ -336,6 +339,7 @@ start_service() {
 main() {
     require_root
     check_debian
+    check_source_tree
     collect_answers
     print_summary
     install_dependencies
